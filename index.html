@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Spread</title>
+		<style>
+			body { margin: 0; }
+		</style>
+		<script type="module"  src="./src/main.ts"></script>
+	</head>
+	<body>
+		<div style="position: absolute;" id="connectUi">
+			<form id="actionForm">
+				<input name='username' type="text" placeholder="username"/>
+				<input name='hostId' type="text" placeholder="connectionId"/>
+				<button type="submit" name='action' value="connect">Connect</button>	
+				<button type="submit" name='action' value="host">Host</button>
+			</form>
+		</div>
+		<div style="position: absolute;" id="lobbyUi">
+			<input type="text" value="---" id="joinCode" readonly="readonly">
+<!-- The button used to copy the text -->
+			<button onclick="copyJoinCode()">Copy text</button>
+			<ul id="lobbyMembers">
+			</ul>
+
+			<button type="button" id="startGameBtn" style="display: none;">Start Game</button>
+		</div>
+	</body>
+	<script>
+		function copyJoinCode() {
+			// Get the text field
+			var copyText = document.getElementById("joinCode");
+		
+			// Select the text field
+			copyText.select();
+			copyText.setSelectionRange(0, 99999); // For mobile devices
+		
+			// Copy the text inside the text field
+			navigator.clipboard.writeText(copyText.value);
+		
+			// Alert the copied text
+			<!-- alert("Copied the text: " + copyText.value); -->
+		} 
+	</script>
+</html>
