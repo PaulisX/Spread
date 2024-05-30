@@ -147,7 +147,7 @@ async function handleClientMessage(msg: Message){
             console.log("Members list",members);
             lobbyUIMembers.innerHTML = "";
             members.forEach(element => {
-                lobbyUIMembers.innerHTML += `<li style="display: flex;  flex-direction: row;align-content: flex-end;" id="l-pid-${element.id}"><img src="./public/vite.svg" style="padding-right:10px;"><h3>${element.username}</h3></li>`;
+                lobbyUIMembers.innerHTML += `<li style="display: flex;  flex-direction: row;align-content: flex-end;" id="l-pid-${element.id}"><img src="./vite.svg" style="padding-right:10px;"><h3>${element.username}</h3></li>`;
             });
             break;
         case ServerMessageTypes.PlayerJoinedLobby:
@@ -155,7 +155,7 @@ async function handleClientMessage(msg: Message){
             let client:ClientData = JSON.parse(msg.content);
             members.push(client);
             console.log("Members list",members);
-            lobbyUIMembers.innerHTML += `<li style="display: flex; flex-direction: row;align-content: flex-end;" id="l-pid-${client.id}" ><img src="./public/vite.svg" style="padding-right:10px;"><h3>${client.username}</h3></li>`;
+            lobbyUIMembers.innerHTML += `<li style="display: flex; flex-direction: row;align-content: flex-end;" id="l-pid-${client.id}" ><img src="./vite.svg" style="padding-right:10px;"><h3>${client.username}</h3></li>`;
             break;
         case ServerMessageTypes.PlayerLeftLobby:
             let pid = msg.content;
@@ -272,7 +272,7 @@ function startGame():void{
     lobbyUI.style.display='none';
     gameUI.style.display='block';
     members.forEach(p => {
-        gameUIMembers.innerHTML += `<li style="display: flex; flex-direction: row;align-content: flex-end;" id="g-pid-${p.id}"><img src="./public/vite.svg" style="padding-right:10px;"><h3>${p.username}</h3></li>`;
+        gameUIMembers.innerHTML += `<li style="display: flex; flex-direction: row;align-content: flex-end;" id="g-pid-${p.id}"><img src="./vite.svg" style="padding-right:10px;"><h3>${p.username}</h3></li>`;
     });
 
     renderer.domElement.addEventListener("mousemove", onMouseMove, false);
