@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Spread</title>
+		<style>
+			body { margin: 0; }
+		</style>
+		<style>
+			.current-turn{
+				margin-left: 30px;
+			}
+		</style>
+		<script type="module" crossorigin src="./assets/index-Zg12qoFK.js"></script>
+	</head>
+	<body>
+		<div style="position: absolute;" id="connectUi">
+			<form id="actionForm">
+				<input name='username' type="text" placeholder="username"/>
+				<input name='hostId' type="text" placeholder="connectionId"/>
+				<button type="submit" name='action' value="connect">Connect</button>	
+				<button type="submit" name='action' value="host">Host</button>
+			</form>
+		</div>
+		<div style="position: absolute; left:0px; top: 50%; transform: translate(0px, -50%);" id="lobbyUi">
+			<!-- <input type="text" value="---" id="joinCode" readonly="readonly"> -->
+			<ul id="lobbyMembers" style="padding: 10px;">
+			</ul>
+			<button id='cpyJoinCodeBtn'>Copy code</button>
+			<br>
+			<br>
+			<button type="button" id="startGameBtn" style="display: none;">Start Game</button>
+		</div>
+		<div style="position: absolute; left:0px; top: 50%; transform: translate(0px, -50%);" id="gameUi">
+			<!-- <input type="text" value="---" id="joinCode" readonly="readonly"> -->
+			<ul id="gameMembers" style="padding: 10px;">
+			</ul>
+		</div>
+		<div style="position: absolute; left:0px; right:0px; top: 10vh; background-color:rgb(58,58,58,.4); text-align: center;" id="gameOverScreen">
+			<h2 id="winnerText">Text</h2>
+			<h1>WINS</h1>
+		</div>
+	</body>
+	<script>
+		function copyJoinCode() {
+			var copyText = document.getElementById("joinCode");
+			copyText.select();
+			copyText.setSelectionRange(0, 99999); // For mobile devices
+			navigator.clipboard.writeText(copyText.value);
+		} 
+	</script>
+</html>
