@@ -1,5 +1,5 @@
 import { BoxGeometry, Material, Mesh, MeshToonMaterial, Object3D, Scene } from "three";
-import { Game } from "./Models/Game"
+import { GameBoard } from "./Models/Game"
 import { int } from "three/examples/jsm/nodes/Nodes.js";
 import { Geometry } from "three/examples/jsm/deprecated/Geometry.js";
 
@@ -15,7 +15,7 @@ const colors = [0xFF6633, 0x99FF99, 0xFF33FF, 0xFFFF99, 0x00B3E6,
                 0xE64D66, 0x4DB380, 0xFF4D4D, 0x99E6E6, 0x6666FF];
 
 export class GameUI{
-    private game: Game;
+    private game: GameBoard;
     private scene: Scene;
     private boxGeometry = new BoxGeometry(1,1,1);
 
@@ -24,12 +24,12 @@ export class GameUI{
     readonly btnMargin=.5;
     readonly btnGroupMargin=.5;
 
-    constructor(game: Game, scene: Scene){
+    constructor(game: GameBoard, scene: Scene){
         this.game = game;
         this.scene = scene;
     }
 
-    setGame(game: Game){
+    setGame(game: GameBoard){
         this.game = this.game;
     }
     createGameGeometry(): Object3D{
@@ -37,10 +37,10 @@ export class GameUI{
         let defaultColor = 0xEAF7FF;
         for(let x = 1; x<this.game.getBoardWidth()-1; x++){
             for(let y = 1; y<this.game.getBoardLength()-1; y++){
-                let cell = this.game.gameBoard[x][y];
+                let cell = this.game.cells[x][y];
                 let color = cell.owner<0?defaultColor:colors[cell.owner];
-                if(this.game.gameBoard[x][y].owner>=0)
-                    color = colors[this.game.gameBoard[x][y].owner];
+                if(this.game.cells[x][y].owner>=0)
+                    color = colors[this.game.cells[x][y].owner];
 
                 let btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
                 let btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
@@ -77,10 +77,10 @@ export class GameUI{
         }
         for(let x = 1; x<this.game.getBoardWidth()-1; x++){
             let y=0;
-            let cell = this.game.gameBoard[x][y];
+            let cell = this.game.cells[x][y];
             let color = cell.owner<0?defaultColor:colors[cell.owner];
-            if(this.game.gameBoard[x][y].owner>=0)
-                color = colors[this.game.gameBoard[x][y].owner];
+            if(this.game.cells[x][y].owner>=0)
+                color = colors[this.game.cells[x][y].owner];
 
             let btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
             let btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
@@ -115,10 +115,10 @@ export class GameUI{
         }
         for(let x = 1; x<this.game.getBoardWidth()-1; x++){
             let y=this.game.getBoardLength()-1;
-            let cell = this.game.gameBoard[x][y];
+            let cell = this.game.cells[x][y];
             let color = cell.owner<0?defaultColor:colors[cell.owner];
-            if(this.game.gameBoard[x][y].owner>=0)
-                color = colors[this.game.gameBoard[x][y].owner];
+            if(this.game.cells[x][y].owner>=0)
+                color = colors[this.game.cells[x][y].owner];
 
             let btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
             let btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
@@ -154,10 +154,10 @@ export class GameUI{
         }
         for(let y = 1; y<this.game.getBoardLength()-1; y++){
             let x=0;
-            let cell = this.game.gameBoard[x][y];
+            let cell = this.game.cells[x][y];
             let color = cell.owner<0?defaultColor:colors[cell.owner];
-            if(this.game.gameBoard[x][y].owner>=0)
-                color = colors[this.game.gameBoard[x][y].owner];
+            if(this.game.cells[x][y].owner>=0)
+                color = colors[this.game.cells[x][y].owner];
 
             let btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
             let btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
@@ -193,10 +193,10 @@ export class GameUI{
         }
         for(let y = 1; y<this.game.getBoardLength()-1; y++){
             let x=this.game.getBoardWidth()-1;
-            let cell = this.game.gameBoard[x][y];
+            let cell = this.game.cells[x][y];
             let color = cell.owner<0?defaultColor:colors[cell.owner];
-            if(this.game.gameBoard[x][y].owner>=0)
-                color = colors[this.game.gameBoard[x][y].owner];
+            if(this.game.cells[x][y].owner>=0)
+                color = colors[this.game.cells[x][y].owner];
 
             let btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
             let btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
@@ -233,10 +233,10 @@ export class GameUI{
         //#region 0,0
         let x=0;
         let y=0;
-        let cell = this.game.gameBoard[x][y];
+        let cell = this.game.cells[x][y];
         let color = cell.owner<0?defaultColor:colors[cell.owner];
-        if(this.game.gameBoard[x][y].owner>=0)
-            color = colors[this.game.gameBoard[x][y].owner];
+        if(this.game.cells[x][y].owner>=0)
+            color = colors[this.game.cells[x][y].owner];
         let btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
         let btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
         gameBoard.add(this.createBtn(
@@ -257,10 +257,10 @@ export class GameUI{
         //#region 0,max
         x=0;
         y=this.game.getBoardLength()-1;
-        cell = this.game.gameBoard[x][y];
+        cell = this.game.cells[x][y];
         color = cell.owner<0?defaultColor:colors[cell.owner];
-        if(this.game.gameBoard[x][y].owner>=0)
-            color = colors[this.game.gameBoard[x][y].owner];
+        if(this.game.cells[x][y].owner>=0)
+            color = colors[this.game.cells[x][y].owner];
         btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
         btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
         gameBoard.add(this.createBtn(
@@ -281,10 +281,10 @@ export class GameUI{
         //#region max,0
         x=this.game.getBoardWidth()-1;
         y=0;
-        cell = this.game.gameBoard[x][y];
+        cell = this.game.cells[x][y];
         color = cell.owner<0?defaultColor:colors[cell.owner];
-        if(this.game.gameBoard[x][y].owner>=0)
-            color = colors[this.game.gameBoard[x][y].owner];
+        if(this.game.cells[x][y].owner>=0)
+            color = colors[this.game.cells[x][y].owner];
         btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
         btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
         gameBoard.add(this.createBtn(
@@ -305,10 +305,10 @@ export class GameUI{
         //#region max,max
         x=this.game.getBoardWidth()-1;
         y=this.game.getBoardLength()-1;
-        cell = this.game.gameBoard[x][y];
+        cell = this.game.cells[x][y];
         color = cell.owner<0?defaultColor:colors[cell.owner];
-        if(this.game.gameBoard[x][y].owner>=0)
-            color = colors[this.game.gameBoard[x][y].owner];
+        if(this.game.cells[x][y].owner>=0)
+            color = colors[this.game.cells[x][y].owner];
         btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
         btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
         gameBoard.add(this.createBtn(

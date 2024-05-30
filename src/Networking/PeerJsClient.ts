@@ -33,7 +33,7 @@ export class peerJsClient implements Client{
                 this.events.emit("onMessage", data as Message);
             });
             this.connection!.on("close", ()=>{console.log("close connection");  this.events.emit("onDisconnected", false);} );
-            this.connection!.on("error", (err:PeerError<"not-open-yet" | "message-too-big" | "negotiation-failed" | "connection-closed">) =>    {this.connection!.close(); throw err;});
+            this.connection!.on("error", (err:PeerError<any>) =>    {this.connection!.close(); throw err;});
             this.events.emit("onConnected");
         });
     }

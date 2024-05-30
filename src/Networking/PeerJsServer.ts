@@ -15,8 +15,15 @@ export class peerJsServer  implements Server{
 
     constructor(){
         this.peer = new Peer();
-        this.peer.on('open', (id) => {this.id=id;console.log('My peer ID is: ' + id); this.events.emit("started",id);});
-        this.peer.on('error',(err:PeerError<any>) => {this.peer.destroy(); throw Error(err.name + ": "+err.message);});
+        this.peer.on('open', (id) => {
+            this.id=id;
+            console.log('My peer ID is: ' + id);
+            this.events.emit("started",id);
+        });
+        this.peer.on('error',(err:PeerError<any>) => {
+            this.peer.destroy(); 
+            this.events.emit("error", err);
+        });
         this.peer.on('connection',(dataConnection)=>{
             const newId = this.getFreeId();
             if(newId==-1)
@@ -26,9 +33,9 @@ export class peerJsServer  implements Server{
             this.clients.set(newId,newClient);
 
             this.events.emit('onConnected', newClient);
-            dataConnection.on('close',()=> this.events.emit('onDisconnected',true));
+            dataConnection.on('close',()=> this.events.emit('onDisconnected',newClient.id));
             dataConnection.on('data',(data:any) => {
-                this.events.emit('onMessage',data as Message, this.getClient(newClient.connectionId)?.id??-1)
+                this.events.emit('onMessage',data as Message, newClient.id??-1);
             });
         });
     }
@@ -94,6 +101,13 @@ export class peerJsServer  implements Server{
     getClients(): ClientData[]{
         return Array.from(this.clients.values());
     };
+    getClientCount(): number {
+        var len = 0;
+        this.clients.forEach(()=> {
+            len++;
+        });
+        return len;
+    }
     private getFreeId(): number{
         for(let i: number = 0; i < this.maxClients; i++){
             if(!this.clients.has(i)){
@@ -110,6 +124,9 @@ export class peerJsServer  implements Server{
 
         const connection = this.peer.getConnection(clientData.peerId,clientData.connectionId);
         return connection as DataConnection;
+    }
+    destroy(): void {
+        this.peer.destroy();
     }
 }
 class PeerJsClientData implements ClientData {

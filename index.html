@@ -7,6 +7,11 @@
 			body { margin: 0; }
 		</style>
 		<script type="module"  src="./src/main.ts"></script>
+		<style>
+			.current-turn{
+				margin-left: 30px;
+			}
+		</style>
 	</head>
 	<body>
 		<div style="position: absolute;" id="connectUi">
@@ -17,30 +22,31 @@
 				<button type="submit" name='action' value="host">Host</button>
 			</form>
 		</div>
-		<div style="position: absolute;" id="lobbyUi">
-			<input type="text" value="---" id="joinCode" readonly="readonly">
-<!-- The button used to copy the text -->
-			<button onclick="copyJoinCode()">Copy text</button>
-			<ul id="lobbyMembers">
+		<div style="position: absolute; left:0px; top: 50%; transform: translate(0px, -50%);" id="lobbyUi">
+			<!-- <input type="text" value="---" id="joinCode" readonly="readonly"> -->
+			<ul id="lobbyMembers" style="padding: 10px;">
 			</ul>
-
+			<button id='cpyJoinCodeBtn'>Copy code</button>
+			<br>
+			<br>
 			<button type="button" id="startGameBtn" style="display: none;">Start Game</button>
+		</div>
+		<div style="position: absolute; left:0px; top: 50%; transform: translate(0px, -50%);" id="gameUi">
+			<!-- <input type="text" value="---" id="joinCode" readonly="readonly"> -->
+			<ul id="gameMembers" style="padding: 10px;">
+			</ul>
+		</div>
+		<div style="position: absolute; left:0px; right:0px; top: 10vh; background-color:rgb(58,58,58,.4); text-align: center;" id="gameOverScreen">
+			<h2 id="winnerText">Text</h2>
+			<h1>WINS</h1>
 		</div>
 	</body>
 	<script>
 		function copyJoinCode() {
-			// Get the text field
 			var copyText = document.getElementById("joinCode");
-		
-			// Select the text field
 			copyText.select();
 			copyText.setSelectionRange(0, 99999); // For mobile devices
-		
-			// Copy the text inside the text field
 			navigator.clipboard.writeText(copyText.value);
-		
-			// Alert the copied text
-			<!-- alert("Copied the text: " + copyText.value); -->
 		} 
 	</script>
 </html>

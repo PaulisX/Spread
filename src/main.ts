@@ -6,38 +6,53 @@ import { Client } from './Networking/Client.ts';
 import { Server } from './Networking/Server.ts';
 import { peerJsServer } from './Networking/PeerJsServer.ts';
 import { Message } from './Networking/Models/Message';
-import { color, func, int, userData } from 'three/examples/jsm/nodes/Nodes.js';
+import { color, func, int, userData, string } from 'three/examples/jsm/nodes/Nodes.js';
 import { Player } from './Models/Player.ts';
 import { ClientData } from './Networking/Models/ClientData.ts';
 import { ClientEvents } from './Networking/Client';
 import { GameUI } from './GameUI.ts';
 import { Mesh, Material } from 'three';
 import './Utils/Object3DExtensions.ts';
-import { Game } from './Models/Game';
+import { GameBoard } from './Models/Game';
+import { GameServer } from './GameServer';
+import { delay } from './Utils/Delay.ts';
 
 let client: Client;
-let server: Server;
-let game: Game|null;
-let currentTurn: number=0;
+// let server: Server;
+let gameServer: GameServer | null;
+let game: GameBoard|null;
 const colors = [0xFF6633, 0x99FF99, 0xFF33FF, 0xFFFF99, 0x00B3E6, 
-                0xE6B333, 0x3366E6, 0x999966, 0xFFB399, 0xB34D4D,
-                0x80B300, 0x809900, 0xE6B3B3, 0x6680B3, 0x66991A, 
-                0xFF99E6, 0xCCFF1A, 0xFF1A66, 0xE6331A, 0x33FFCC,
-                0x66994D, 0xB366CC, 0x4D8000, 0xB33300, 0xCC80CC, 
-                0x66664D, 0x991AFF, 0xE666FF, 0x4DB3FF, 0x1AB399,
-                0xE666B3, 0x33991A, 0xCC9999, 0xB3B31A, 0x00E680, 
-                0x4D8066, 0x809980, 0xE6FF80, 0x1AFF33, 0x999933,
-                0xFF3380, 0xCCCC00, 0x66E64D, 0x4D80CC, 0x9900B3, 
-                0xE64D66, 0x4DB380, 0xFF4D4D, 0x99E6E6, 0x6666FF];
+    0xE6B333, 0x3366E6, 0x999966, 0xFFB399, 0xB34D4D,
+    0x80B300, 0x809900, 0xE6B3B3, 0x6680B3, 0x66991A, 
+    0xFF99E6, 0xCCFF1A, 0xFF1A66, 0xE6331A, 0x33FFCC,
+    0x66994D, 0xB366CC, 0x4D8000, 0xB33300, 0xCC80CC, 
+    0x66664D, 0x991AFF, 0xE666FF, 0x4DB3FF, 0x1AB399,
+    0xE666B3, 0x33991A, 0xCC9999, 0xB3B31A, 0x00E680, 
+    0x4D8066, 0x809980, 0xE6FF80, 0x1AFF33, 0x999933,
+    0xFF3380, 0xCCCC00, 0x66E64D, 0x4D80CC, 0x9900B3, 
+    0xE64D66, 0x4DB380, 0xFF4D4D, 0x99E6E6, 0x6666FF];
+    
+let connectUI = document.getElementById('connectUi')!;
 
-var connectScreen = document.getElementById('connectUi')!;
-var lobbyScreen = document.getElementById('lobbyUi')!;
-var lobbyMembers = document.getElementById('lobbyMembers')!;
-connectScreen.style.display = "none";
-lobbyScreen.style.display = "none";
+let lobbyUI = document.getElementById('lobbyUi')!;
+let lobbyUIMembers = document.getElementById('lobbyMembers')!;
+
+let gameUI = document.getElementById('gameUi')!;
+let gameUIMembers = document.getElementById('gameMembers')!;
+
+let gameOverScreen = document.getElementById('gameOverScreen')!;
+let winnerText = document.getElementById('winnerText')!;
+
+connectUI.style.display = "none";
+lobbyUI.style.display = "none";
+connectUI.style.display = "block";
+gameOverScreen.style.display = "none";
+
+let animating = false;
+let members: ClientData[]=[];
+let currentTurn: number=0;
 
 // #region Initialize connectScreen
-connectScreen.style.display = "block";
 (<HTMLFormElement>document.getElementById('actionForm')).addEventListener('submit',(ev:SubmitEvent)=>{
     ev.preventDefault();
     const data: FormData = new FormData(ev.target as HTMLFormElement);
@@ -58,118 +73,107 @@ function Join(hostId: string, username: string){
         client = new peerJsClient();
     }
     console.log("seting events ..."); 
-    client.events.on("onMessage", (msg: Message)=> {
-        handleClientMessage(msg);
-    });
     client.events.on("started",(id:string)=>{
         console.log("started, Connecting ...",id);
         client.connect(hostId, username);
     });
+    client.events.on("onMessage", (msg: Message)=> {
+        handleClientMessage(msg);
+    });
     client.events.on("onConnected",()=>{
-        connectScreen.style.display = "none";
-        lobbyScreen.style.display = "block";
-        client.sendMessage({type: ServerMessageTypes.GetLobbyMemberList,content:""})
+        console.log("Connected to server");
+        connectUI.style.display = "none";
+        lobbyUI.style.display = "block";
+        client.sendMessage({
+            type: ClientMessageTypes.GetLobbyMemberList,
+            content:""})
     });
     
     console.log("Setting UI ...");
-    connectScreen.style.display = "none";
-    lobbyScreen.style.display = "block";
-    (<HTMLInputElement>document.getElementById('joinCode')).value=hostId;
+    connectUI.style.display = "none";
+    lobbyUI.style.display = "block";
 }
-function Host(username: string){
-
+async function Host(username: string){ 
+    // TODO: Handle fail to start
+    console.log("Starting game ...");
+    gameServer = new GameServer();
+    await gameServer.startServer();
+    // if(!gameServer.started){
+    //     console.error("Failed to start error!");
+    //     return;
+    // }
+    
+    console.log("Joining game ...");
+    Join(gameServer.getId(),username);
+    gameServer.events.on("gameOver",()=>{
+        console.log("Server destroyed!");
+        gameServer!.destroy();
+    });
+    // Set start game btn
     let startGameBtn = (<HTMLButtonElement>document.getElementById('startGameBtn'))!;
     startGameBtn.style.display="block";
     startGameBtn.addEventListener("click",(e:MouseEvent)=>{
+        if(members.length<2){
+            console.warn("Cant start server with less than 2 players!");
+            return;
+        }
         console.log("Starting game ...");
-        lobbyScreen.style.display="none";
         client.sendMessage({type: ClientMessageTypes.StartGame, content: ""});
     });
+    // set cpy join code btn
+    let cpuJoinCodeBtn = (<HTMLButtonElement>document.getElementById('cpyJoinCodeBtn'))!;
+    cpuJoinCodeBtn.addEventListener("click",(e:MouseEvent)=>{
+        navigator.clipboard.writeText(gameServer!.getId());
+    });
 
-    server = new peerJsServer();
-    server.events.on("started",()=>{
-        Join(server.id,username);
-    });
-    server.events.on("onMessage",(msg: Message, clientId: number)=>handleServerMessage(msg,clientId));
-    server.events.on("onConnected",(client)=>{
-        server.sendMessageAllExcept({
-            type: ClientMessageTypes.PlayerJoinedLobby,
-            content: JSON.stringify(client)
-        },client.id);
-    });
 }
-
-function handleServerMessage(msg: Message, clientId: number){
-    // console.log(msg,clientId);
-    switch(msg.type){
-        case 0:
-            server.sendMessage({
-                type: ClientMessageTypes.LobbyMemberList,
-                content: JSON.stringify(server.getClients())
-            }, clientId);
-            console.log("Responds to GetLobbyMemberList");
-            break;
-        case ClientMessageTypes.StartGame:{
-            game = new Game();
-            game.initGame(5);
-            server.sendMessageAll({type:ClientMessageTypes.StartGame,content:JSON.stringify(5)});
-            break;
-        }
-        case ClientMessageTypes.HoverBtn:{
-            server.sendMessageAllExcept(msg,clientId);
-            break;
-        }
-        case ClientMessageTypes.PerformTurn:{
-            console.log("server handle turn");
-            let el:number[] = JSON.parse(msg.content);
-            el.push(clientId);
-            if(game == undefined || game==null){
-                console.error("Game is null!");
-                break;
-            }
-            if(!game.move(clientId,el[0],el[1],el[2])){
-                console.log("Illegal move");
-                break;
-            }
-            server.sendMessageAll({type:ClientMessageTypes.PerformTurn ,content:JSON.stringify(el)});
-            console.log("server turn msg");
-            break;
-        }
-        default:
-            console.error("Unknown message!",msg);
-            break;
-    }
+function getScores(): number[]{
+    let score: number[] = new Array(members.length).fill(0);
+    game!.cells.forEach(row => {
+        row.forEach(cell=>{
+            if(cell.owner==-1)
+                return;
+            score[cell.owner] += 1;
+        });
+    });
+    return score;
 }
 async function handleClientMessage(msg: Message){
     console.log(msg);
     switch(msg.type){
-        case ClientMessageTypes.LobbyMemberList:
+        case ServerMessageTypes.LobbyMemberList:
             console.log("member list!");
-            let members:ClientData[]  = JSON.parse(msg.content);
-            lobbyMembers.innerHTML = "";
+            members = JSON.parse(msg.content);
+            console.log("Members list",members);
+            lobbyUIMembers.innerHTML = "";
             members.forEach(element => {
-                lobbyMembers.innerHTML+= `<li>${element.id}: ${element.username}</li>`;
+                lobbyUIMembers.innerHTML += `<li style="display: flex;  flex-direction: row;align-content: flex-end;" id="l-pid-${element.id}"><img src="./public/vite.svg" style="padding-right:10px;"><h3>${element.username}</h3></li>`;
             });
             break;
-        case ClientMessageTypes.PlayerJoinedLobby:
+        case ServerMessageTypes.PlayerJoinedLobby:
             console.log("Player joined lobby!");
             let client:ClientData = JSON.parse(msg.content);
-            lobbyMembers.innerHTML+= `<li>${client.id}: ${client.username}</li>`;
+            members.push(client);
+            console.log("Members list",members);
+            lobbyUIMembers.innerHTML += `<li style="display: flex; flex-direction: row;align-content: flex-end;" id="l-pid-${client.id}" ><img src="./public/vite.svg" style="padding-right:10px;"><h3>${client.username}</h3></li>`;
             break;
-        case ClientMessageTypes.PlayerLeftLobby:
-            console.error("Player left not implemented!");
+        case ServerMessageTypes.PlayerLeftLobby:
+            let pid = msg.content;
+            console.log(`Player ${pid} left.`);
+            document.getElementById(`l-pid-${pid}`);
             break;
-        case ClientMessageTypes.StartGame:
-            if(game==null){
-                game = new Game();
-                game.initGame(5);
-                // game.setBoard(JSON.parse(msg.content));
-            }
-            console.log("Starting game ...");
-            gameBoard = new GameUI(game!,scene).createGameGeometry();
-            scene.add(gameBoard);
+        case ServerMessageTypes.StartGame:
+            let m = JSON.parse(msg.content);
+            let boardSize:number = m.size;
+            let nextTurn:number = m.nextTurn;
+            
+            startGame();
+            console.log("get",`g-pid-${nextTurn}`);
+            console.log(document.getElementById(`g-pid-${nextTurn}`));
+            document.getElementById(`g-pid-${nextTurn}`)!.classList.add("current-turn");
+            currentTurn = nextTurn;
             break;
-        case ClientMessageTypes.HoverBtn:
+        case ServerMessageTypes.HoverBtn:
             let btnId:number = JSON.parse(msg.content);
             if(btnId==-1){
                 if(remoteHover!=null)
@@ -185,25 +189,62 @@ async function handleClientMessage(msg: Message){
             remoteHover = newRemoteHover;
             remoteHover.position.set(remoteHover.position.x,0.5,remoteHover.position.z);
             break;
-        case ClientMessageTypes.PerformTurn:{
-            let el:number[] = JSON.parse(msg.content);
-            console.log("client handle turn",el[0],el[1]);
-            if(server==null){
-                if(!game?.move(el[3],el[0],el[1],el[2])){
-                    console.error("Failed to performed remote turn!", msg);
-                    break;
-                }
+        case ServerMessageTypes.PerformTurn:{
+            let m = JSON.parse(msg.content);
+            let move:number[] = m.move;
+            let gameOver: boolean = m.gameEnd;
+            let serverScore :number[] = m.score;
+            let nextTurn: number = m.nextTurn;
+
+
+            console.log("client handle turn",move[0],move[1]);
+            if(!game?.move(move[3],move[0],move[1],move[2])){
+                console.error("Failed to performed remote turn!", msg);
+                break;
             }
 
+            
             scene.remove(gameBoard);
             gameBoard = (new GameUI(game!, scene)).createGameGeometry();
             scene.add(gameBoard);
+            animating = true;
+            let score: number[];
             while(game!.update()){
                 await delay(500);
                 scene.remove(gameBoard);
                 gameBoard = (new GameUI(game!, scene)).createGameGeometry();
                 scene.add(gameBoard);
+                if(gameOver){
+                    score = getScores();
+                    let alive = 0;
+                    score.forEach((v)=>{
+                        if(v>0)alive++;
+                    })
+                    if(alive<=1) break;
+                }
             }
+            animating = false;
+            
+            score = getScores();
+            for(let i = 0; i < serverScore.length; i++){
+                if(score[i]!=serverScore[i]){
+                    console.error("Scores don't match: ", serverScore, score);
+                }
+            }
+
+            if(gameOver){
+                for(let i = 0; i < score.length; i++){
+                    if(score[i]>0){
+                        gameOverF(members[i].username);
+                        break;
+                    }
+                }
+            }
+
+            document.getElementById(`g-pid-${currentTurn}`)?.classList.remove("current-turn");
+            document.getElementById(`g-pid-${nextTurn}`)?.classList.add("current-turn");
+            currentTurn = nextTurn;
+
             break;
         }
         default:
@@ -211,26 +252,46 @@ async function handleClientMessage(msg: Message){
             break;
     }
 }
-function delay(ms: number) {
-    return new Promise( resolve => setTimeout(resolve, ms) );
+
+function gameOverF(winnerName: string):void{
+    console.log("Game over!");
+    gameServer = null;
+    renderer.domElement.removeEventListener("mousemove", onMouseMove, false);
+    renderer.domElement.removeEventListener("mousedown", onMouseClick, false);
+    gameOverScreen.style.display='block';
+    winnerText.innerHTML = winnerName;
+}
+function startGame():void{
+    console.log("Starting game ...");
+    game = new GameBoard();
+    game.initGame(5);
+    
+    gameBoard = new GameUI(game!,scene).createGameGeometry();
+    scene.add(gameBoard);
+
+    lobbyUI.style.display='none';
+    gameUI.style.display='block';
+    members.forEach(p => {
+        gameUIMembers.innerHTML += `<li style="display: flex; flex-direction: row;align-content: flex-end;" id="g-pid-${p.id}"><img src="./public/vite.svg" style="padding-right:10px;"><h3>${p.username}</h3></li>`;
+    });
+
+    renderer.domElement.addEventListener("mousemove", onMouseMove, false);
+    renderer.domElement.addEventListener("mousedown", onMouseClick, false);
 }
 
-let remoteHover: THREE.Object3D | null = null;
+
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
-
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.z = 5;
 const orbitControls = new OrbitControls(camera, renderer.domElement);
 orbitControls.target.set((.5*1+.5*4+3)*2+(.5*0+.5*2+1.5),0,(.5*1+.5*4+3)*2+(.5*0+.5*2+1.5));
-    
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#fbd2d2');
-let gameBoard: THREE.Object3D;
 
-
+// #region directions
 const boxGeometry = new THREE.BoxGeometry( 1, 1, 1 );
 const cube = new THREE.Mesh( boxGeometry, new THREE.MeshToonMaterial( { color: 0x00ff00 } ) );
 const cubeR = new THREE.Mesh( boxGeometry, new THREE.MeshToonMaterial( { color: 0xff0000 } ) );
@@ -240,37 +301,40 @@ cubeR.position.set(2,0,0);
 cubeU.position.set(0,2,0);
 cubeF.position.set(0,0,2);
 scene.add( cube, cubeR, cubeU, cubeF );
-
+// #endregion
+// #region lights
 const spotLight1:THREE.DirectionalLight = new THREE.DirectionalLight(0xffffff, Math.PI/2);
 const spotLight2:THREE.DirectionalLight = new THREE.DirectionalLight(0xffffff, Math.PI/4);
 spotLight1.position.set(1,1,1);
 spotLight1.position.set(-1,-1,-1);
 scene.add(spotLight1, spotLight2);
-
-const raycaster = new THREE.Raycaster();
-let mouse = new THREE.Vector2()
+// #endregion
 
 
 updateFrame();
-
 function updateFrame() {
-	requestAnimationFrame( updateFrame );
+    requestAnimationFrame( updateFrame );
 	renderer.render( scene, camera );
 }
 
-renderer.domElement.addEventListener("mousemove", onMouseMove, false);
-renderer.domElement.addEventListener("mousedown", onMouseClick, false);
+
+let gameBoard: THREE.Object3D;
+const raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2()
 let lastHovered: THREE.Object3D | null = null;
+let remoteHover: THREE.Object3D | null = null;
 function onMouseClick(){
-    console.log("mouse click");
+    if(animating){
+        return;
+    }
+    
     if(lastHovered==null || lastHovered.userData["tag"]!="btn"){
         return;
     }
     let coords: number[] = lastHovered.userData["group"];
-    if(game!.gameBoard[coords[0]][coords[1]].filedSides[lastHovered.userData.side]){
+    if(game!.cells[coords[0]][coords[1]].filedSides[lastHovered.userData.side]){
         return;
     }
-    console.log("clicked", lastHovered.userData.group[0],lastHovered.userData.group[1]);
     client.sendMessage({type:ClientMessageTypes.PerformTurn,content:JSON.stringify(
         [lastHovered.userData.group[0],lastHovered.userData.group[1],lastHovered.userData.side])});
 }
@@ -303,11 +367,9 @@ function onMouseMove(event: MouseEvent){
     return;
 }
 
-//#region resize
 window.addEventListener("resize", onWindowResize);
 function onWindowResize(event: Event): void {
     camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
-//#endregion

@@ -17,11 +17,23 @@ export class TypedEventEmitter<TEvents extends Record<string, any>> {
     ) {
         this.emitter.on(eventName, handler as any)
     }
-
+    
     off<TEventName extends keyof TEvents & string>(
         eventName: TEventName,
         handler: (...eventArg: TEvents[TEventName]) => void
     ) {
         this.emitter.off(eventName, handler as any)
+    }
+    once<TEventName extends keyof TEvents & string>(
+        eventName: TEventName,
+        handler: (...eventArg: TEvents[TEventName]) => void
+    ) {
+        this.emitter.once(eventName, handler as any)
+    }
+    waitForEvent<TEventName extends keyof TEvents & string>(event: TEventName): Promise<any> {
+        return new Promise((resolve, reject) => {
+            this.emitter.once(event, resolve);
+            this.once("error", reject);        
+        });
     }
 }

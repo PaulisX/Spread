@@ -1,61 +1,54 @@
-export class Game{
-    turnCount:number = 0;
-    gameBoard: Cell[][] = [];
+export class GameBoard{
+    cells: Cell[][] = [];
     updateQueue: number[][];
     constructor(){
         this.updateQueue = [];
     }
     initGame (boardSize: number){
-        this.gameBoard= new Array(boardSize)
+        this.cells= new Array(boardSize)
         for(let i = 0; i < boardSize; i++){
-            this.gameBoard[i]= new Array(boardSize)
+            this.cells[i]= new Array(boardSize)
         }
         for (let i = 1; i < boardSize-1; i++) {
             for (let j = 1; j < boardSize-1; j++) {
-                this.gameBoard[i][j]=new Cell(4);
+                this.cells[i][j]=new Cell(4);
             }
         }
         for (let i = 1; i < boardSize-1; i++) {
-            this.gameBoard[i][0]=new Cell(3);
-            this.gameBoard[i][boardSize-1]=new Cell(3);
-            this.gameBoard[0][i]=new Cell(3);
-            this.gameBoard[boardSize-1][i]=new Cell(3);
+            this.cells[i][0]=new Cell(3);
+            this.cells[i][boardSize-1]=new Cell(3);
+            this.cells[0][i]=new Cell(3);
+            this.cells[boardSize-1][i]=new Cell(3);
         }
-        this.gameBoard[0][0]=new Cell(2);
-        this.gameBoard[0][boardSize-1]=new Cell(2);
-        this.gameBoard[boardSize-1][0]=new Cell(2);
-        this.gameBoard[boardSize-1][boardSize-1]=new Cell(2);
+        this.cells[0][0]=new Cell(2);
+        this.cells[0][boardSize-1]=new Cell(2);
+        this.cells[boardSize-1][0]=new Cell(2);
+        this.cells[boardSize-1][boardSize-1]=new Cell(2);
     }
     setBoard(gameBoard: Cell[][]){
-        this.gameBoard = gameBoard
-    }
-    setTurnCount(turnCount: number){
-        this.turnCount = turnCount;
+        this.cells = gameBoard
     }
     getBoard():Cell[][]{
-        return this.gameBoard;
-    }
-    getTurnCount():number{
-        return this.turnCount;
+        return this.cells;
     }
     getBoardWidth():number{
-        return this.gameBoard.length;
+        return this.cells.length;
     }
     getBoardLength():number{
-        return this.gameBoard[0].length;
+        return this.cells[0].length;
     }
     getExplosions():number[][]{
         return JSON.parse(JSON.stringify(this.updateQueue));
-    } 
+    }
     move(owner: number, x: number, y:number,side:number):boolean{
-        const cell = this.gameBoard[x][y];
+        const cell = this.cells[x][y];
         if(cell.owner != owner && cell.owner != -1){
             console.log(cell, owner);
             return false;
         }
-        this.gameBoard[x][y].color(side);
-        this.gameBoard[x][y].owner = owner;
-        if(this.gameBoard[x][y].isFull()){
+        this.cells[x][y].color(side);
+        this.cells[x][y].owner = owner;
+        if(this.cells[x][y].isFull()){
             console.log("reach max");
             let el: number[] =[x,y]; 
             this.updateQueue.push(el);
@@ -76,41 +69,41 @@ export class Game{
                 return false;
             }
             let x=gr[0], y=gr[1];
-            let cell = this.gameBoard[x][y];
+            let cell = this.cells[x][y];
             let owner = cell.owner;
             if(cell.isFull()){
                 fin = true;
-                this.gameBoard[x][y].clear();
+                this.cells[x][y].clear();
 
-                if(x+1 < this.gameBoard.length)
+                if(x+1 < this.cells.length)
                 {
-                    this.gameBoard[x+1][y].owner = owner;
-                    this.gameBoard[x+1][y].color(3);
-                    if(this.gameBoard[x+1][y].isFull())
+                    this.cells[x+1][y].owner = owner;
+                    this.cells[x+1][y].color(3);
+                    if(this.cells[x+1][y].isFull())
                         newQ.push([x+1,y])
 
                 }
                 if(x-1 >= 0)
                 {
-                    console.log("x-1>=0",x-1,y,this.gameBoard);
-                    this.gameBoard[x-1][y].owner = owner;
-                    this.gameBoard[x-1][y].color(1);
-                    if(this.gameBoard[x-1][y].isFull())
+                    console.log("x-1>=0",x-1,y,this.cells);
+                    this.cells[x-1][y].owner = owner;
+                    this.cells[x-1][y].color(1);
+                    if(this.cells[x-1][y].isFull())
                         newQ.push([x-1,y])
                 }
-                if(y+1 < this.gameBoard.length)
+                if(y+1 < this.cells.length)
                 {
-                    this.gameBoard[x][y+1].owner = owner;
-                    this.gameBoard[x][y+1].color(0);
-                    if(this.gameBoard[x][y+1].isFull())
+                    this.cells[x][y+1].owner = owner;
+                    this.cells[x][y+1].color(0);
+                    if(this.cells[x][y+1].isFull())
                         newQ.push([x,y+1])
                 }
                 if(y-1 >= 0)
                 {
-                    console.log("y-1>=0",x,y-1,this.gameBoard);
-                    this.gameBoard[x][y-1].owner = owner;
-                    this.gameBoard[x][y-1].color(2);    
-                    if(this.gameBoard[x][y-1].isFull())
+                    console.log("y-1>=0",x,y-1,this.cells);
+                    this.cells[x][y-1].owner = owner;
+                    this.cells[x][y-1].color(2);    
+                    if(this.cells[x][y-1].isFull())
                         newQ.push([x,y-1])
                 }
             }

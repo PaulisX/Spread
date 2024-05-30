@@ -13,12 +13,16 @@ export type Server ={
     sendMessageAll(message: Message): void,
     sendMessageAllExcept(message: Message, ... id:number[]): void,
 
-    getClient(id: number): ClientData | undefined
-    getClients(): ClientData[]
+    getClient(id: number): ClientData | undefined,
+    getClients(): ClientData[],
+    getClientCount(): number,
+
+    destroy(): void,
 }
 export type ServerEvents = {
     'started': [id:string]
     'onMessage': [message: Message, client:number]
     'onConnected': [client: ClientData]
-    'onDisconnected': [expected: boolean]
+    'onDisconnected': [id: number]
+    'error': [error: Error]
 }
