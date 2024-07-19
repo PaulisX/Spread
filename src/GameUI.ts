@@ -1,343 +1,176 @@
-import { BoxGeometry, Material, Mesh, MeshToonMaterial, Object3D, Scene } from "three";
-import { GameBoard } from "./Models/Game"
+import {
+	BoxGeometry,
+	Material,
+	Mesh,
+	MeshToonMaterial,
+	Object3D,
+	Scene,
+} from "three";
+import { GameBoard } from "@/Models/Game";
 import { int } from "three/examples/jsm/nodes/Nodes.js";
 import { Geometry } from "three/examples/jsm/deprecated/Geometry.js";
+import EventEmitter from "eventemitter3";
+import { ClientData } from "@/Networking/Models/ClientData";
+import { Client } from "./Networking/Client";
+import { InterpolatedAnimation } from "./InterpolatedAnimation";
 
-const colors = [0xFF6633, 0x99FF99, 0xFF33FF, 0xFFFF99, 0x00B3E6, 
-                0xE6B333, 0x3366E6, 0x999966, 0xFFB399, 0xB34D4D,
-                0x80B300, 0x809900, 0xE6B3B3, 0x6680B3, 0x66991A, 
-                0xFF99E6, 0xCCFF1A, 0xFF1A66, 0xE6331A, 0x33FFCC,
-                0x66994D, 0xB366CC, 0x4D8000, 0xB33300, 0xCC80CC, 
-                0x66664D, 0x991AFF, 0xE666FF, 0x4DB3FF, 0x1AB399,
-                0xE666B3, 0x33991A, 0xCC9999, 0xB3B31A, 0x00E680, 
-                0x4D8066, 0x809980, 0xE6FF80, 0x1AFF33, 0x999933,
-                0xFF3380, 0xCCCC00, 0x66E64D, 0x4D80CC, 0x9900B3, 
-                0xE64D66, 0x4DB380, 0xFF4D4D, 0x99E6E6, 0x6666FF];
+export class GameUI {
+	static colors = [
+		0x66991a, 0xb34d4d, 0x9900b3, 0x4db3ff, 0x4d8066, 0xffb399, 0x80b300,
+		0x809900, 0xe6b3b3, 0x6680b3, 0x999966, 0xff99e6, 0xccff1a, 0xff1a66,
+		0xe6331a, 0x33ffcc, 0x66994d, 0xb366cc, 0x4d8000, 0xb33300, 0xcc80cc,
+		0x66664d, 0x991aff, 0xe666ff, 0x1ab399, 0xe666b3, 0x33991a, 0xcc9999,
+		0xb3b31a, 0x00e680, 0x809980, 0xe6ff80, 0x1aff33, 0x999933, 0xff3380,
+		0xcccc00, 0x66e64d, 0x4d80cc, 0xe64d66, 0x4db380, 0xff4d4d, 0x99e6e6,
+		0x6666ff,
+	];
 
-export class GameUI{
-    private game: GameBoard;
-    private scene: Scene;
-    private boxGeometry = new BoxGeometry(1,1,1);
+	readonly events: EventEmitter = new EventEmitter();
+	readonly explosionCounterSize = 64;
+	connectUi: HTMLElement = document.getElementById("connectUi")!;
+	connectUiForm: HTMLFormElement = document.getElementById(
+		"actionForm"
+	) as HTMLFormElement;
 
+	lobbyUi: HTMLElement = document.getElementById("lobbyUi")!;
+	lobbyUiMembers: HTMLElement = document.getElementById("lobbyMembers")!;
+	lobbyUiCopyCodeBtn: HTMLButtonElement = (<HTMLButtonElement>(
+		document.getElementById("cpyJoinCodeBtn")
+	))!;
+	lobbyUiStartGameBtn: HTMLButtonElement = (<HTMLButtonElement>(
+		document.getElementById("startGameBtn")
+	))!;
 
-    readonly btnSize=1;
-    readonly btnMargin=.5;
-    readonly btnGroupMargin=.5;
+	gameUi: HTMLElement = document.getElementById("gameUi")!;
+	gameUiMembers: HTMLElement = document.getElementById("gameMembers")!;
+	gameUiChainCounter: HTMLElement = document.getElementById("chainCounter")!;
+	//Game over
+	gameUiGoScreen: HTMLElement = document.getElementById("gameOverScreen")!;
+	gameUiGoText: HTMLElement = document.getElementById("winnerText")!;
 
-    constructor(game: GameBoard, scene: Scene){
-        this.game = game;
-        this.scene = scene;
-    }
+	constructor() {
+		this.lobbyUi.style.display = "none";
+		this.gameUi.style.display = "none";
+		this.connectUi.style.display = "block";
 
-    setGame(game: GameBoard){
-        this.game = this.game;
-    }
-    createGameGeometry(): Object3D{
-        let gameBoard = new Object3D();
-        let defaultColor = 0xEAF7FF;
-        for(let x = 1; x<this.game.getBoardWidth()-1; x++){
-            for(let y = 1; y<this.game.getBoardLength()-1; y++){
-                let cell = this.game.cells[x][y];
-                let color = cell.owner<0?defaultColor:colors[cell.owner];
-                if(this.game.cells[x][y].owner>=0)
-                    color = colors[this.game.cells[x][y].owner];
+		let queryString = window.location.search;
+		let urlParams = new URLSearchParams(queryString);
+		let joinCode = urlParams.get("joinCode");
+		if (joinCode) {
+			(<HTMLInputElement>document.getElementById("homeUiHostId")).value =
+				joinCode;
+		}
 
-                let btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
-                let btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
-                
-                gameBoard.add(this.createBtn(
-                    btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                    btnGroupPosY+this.btnMargin+this.btnSize/2,
-                    [x,y],
-                    0,
-                    cell.filedSides[0] ? color:defaultColor
-                ));
-                gameBoard.add(this.createBtn(
-                    btnGroupPosX+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-                    btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                    [x,y],
-                    1,
-                    cell.filedSides[1] ? color:defaultColor
-                ));
-                gameBoard.add(this.createBtn(
-                    btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                    btnGroupPosY+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-                    [x,y],
-                    2,
-                    cell.filedSides[2] ? color:defaultColor
-                ));
-                gameBoard.add(this.createBtn(
-                    btnGroupPosX+this.btnMargin+this.btnSize/2,
-                    btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                    [x,y],
-                    3,
-                    cell.filedSides[3] ? color:defaultColor
-                ));
-            }
-        }
-        for(let x = 1; x<this.game.getBoardWidth()-1; x++){
-            let y=0;
-            let cell = this.game.cells[x][y];
-            let color = cell.owner<0?defaultColor:colors[cell.owner];
-            if(this.game.cells[x][y].owner>=0)
-                color = colors[this.game.cells[x][y].owner];
+		this.connectUiForm.addEventListener("submit", (ev: SubmitEvent) => {
+			ev.preventDefault();
+			const data: FormData = new FormData(ev.target as HTMLFormElement);
+			let username = data.get("username")?.toString();
+			if (!username) {
+				console.error("Failed to read username");
+				return;
+			}
+			if ((<HTMLInputElement>ev.submitter).value == "host")
+				this.events.emit("host", username);
+			else {
+				let joinCode = data.get("hostId")?.toString();
+				if (!username) {
+					console.error("Failed to read joincode");
+					return;
+				}
+				this.events.emit("join", joinCode, username);
+			}
+		});
+	}
+	setWorldCanvas(canvas: HTMLCanvasElement) {
+		document.body.appendChild(canvas);
+	}
+	showLobby(joinCode: string, isHost: boolean = false) {
+		this.connectUi.style.display = "none";
+		this.gameUi.style.display = "none";
+		this.lobbyUi.style.display = "block";
+		history.replaceState({ page: 1 }, "room", `?joinCode=${joinCode}`);
+		// set copy join code button
+		this.lobbyUiCopyCodeBtn.addEventListener("click", (e: MouseEvent) => {
+			navigator.clipboard.writeText(joinCode);
+		});
+		if (isHost) {
+			this.lobbyUiStartGameBtn.style.display = "block";
+			this.lobbyUiStartGameBtn.addEventListener("click", (e: MouseEvent) => {
+				this.events.emit("startGame");
+			});
+		}
+	}
+	setLobbyMemembers(clients: ClientData[]) {
+		let memberListStr = "";
+		clients.forEach((client) => {
+			memberListStr += `<li style="display: flex;  flex-direction: row;align-content: flex-end;" id="l-pid-${client.id}"><img src="./vite.svg" style="padding-right:10px;"><h3>${client.username}</h3></li>`;
+		});
+		this.lobbyUiMembers.innerHTML = memberListStr;
+	}
 
-            let btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
-            let btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
-            // gameBoard.add(this.createBtn(
-            //     btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-            //     btnGroupPosY+this.btnMargin+this.btnSize/2,
-            //     [x,y],
-            //     0,
-            //     cell.filedSides[0] ? color:defaultColor
-            // ));
-            gameBoard.add(this.createBtn(
-                btnGroupPosX+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-                btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                [x,y],
-                0,
-                cell.filedSides[0] ? color:defaultColor
-            ));
-            gameBoard.add(this.createBtn(
-                btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                btnGroupPosY+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-                [x,y],
-                1,
-                cell.filedSides[1] ? color:defaultColor
-            ));
-            gameBoard.add(this.createBtn(
-                btnGroupPosX+this.btnMargin+this.btnSize/2,
-                btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                [x,y],
-                2,
-                cell.filedSides[2] ? color:defaultColor
-            ));
-        }
-        for(let x = 1; x<this.game.getBoardWidth()-1; x++){
-            let y=this.game.getBoardLength()-1;
-            let cell = this.game.cells[x][y];
-            let color = cell.owner<0?defaultColor:colors[cell.owner];
-            if(this.game.cells[x][y].owner>=0)
-                color = colors[this.game.cells[x][y].owner];
+	showGame() {
+		this.connectUi.style.display = "none";
+		this.lobbyUi.style.display = "none";
+		this.gameUi.style.display = "block";
+	}
+	setGameMemberList(clients: ClientData[]) {
+		let memberListStr = "";
+		clients.forEach((client) => {
+			memberListStr += `<li style="display: flex;  flex-direction: row;align-content: flex-end;" id="l-pid-${client.id}"><img src="./vite.svg" style="padding-right:10px;"><h3>${client.username}</h3></li>`;
+		});
+		this.gameUiMembers.innerHTML = memberListStr;
+	}
+	setCurrentActivePlayer(client: ClientData) {}
 
-            let btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
-            let btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
-            
-            gameBoard.add(this.createBtn(
-                btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                btnGroupPosY+this.btnMargin+this.btnSize/2,
-                [x,y],
-                0,
-                cell.filedSides[0] ? color:defaultColor
-            ));
-            gameBoard.add(this.createBtn(
-                btnGroupPosX+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-                btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                [x,y],
-                1,
-                cell.filedSides[1] ? color:defaultColor
-            ));
-            // gameBoard.add(this.createBtn(
-            //     btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-            //     btnGroupPosY+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-            //     [x,y],
-            //     2,
-            //     cell.filedSides[2] ? color:defaultColor
-            // ));
-            gameBoard.add(this.createBtn(
-                btnGroupPosX+this.btnMargin+this.btnSize/2,
-                btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                [x,y],
-                2,
-                cell.filedSides[2] ? color:defaultColor
-            ));
-        }
-        for(let y = 1; y<this.game.getBoardLength()-1; y++){
-            let x=0;
-            let cell = this.game.cells[x][y];
-            let color = cell.owner<0?defaultColor:colors[cell.owner];
-            if(this.game.cells[x][y].owner>=0)
-                color = colors[this.game.cells[x][y].owner];
+	counterAmination: InterpolatedAnimation = new InterpolatedAnimation(
+		1500,
+		(t) => {
+			this.setExplosionCounterSize(1 - t);
+		},
+		() => {},
+		() => {
+			this.setExplosionCounter(0);
+		},
+		Date.now(),
+		"explosionCounter"
+	);
+	setExplosionCounter(number: number, color?: number, size: number = 1) {
+		let text = "";
+		this.setExplosionCounterSize(size);
+		if (number > 0) text = `${number}x`;
+		this.gameUiChainCounter.innerHTML = text;
+		if (color) this.gameUiChainCounter.style.color = `#${color.toString(16)}`;
+		this.counterAmination?.restart(false);
+		if (
+			!this.animations.find((v) => {
+				return v.name == this.counterAmination.name;
+			})
+		)
+			this.addAnimation(this.counterAmination);
+	}
+	private setExplosionCounterSize(size: number) {
+		this.gameUiChainCounter.style.scale = `${size}`;
+	}
+	gameOver(client: ClientData) {
+		this.gameUiGoScreen.style.display = "block";
+		this.gameUiGoText.innerHTML = client.username;
+	}
 
-            let btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
-            let btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
-            
-            gameBoard.add(this.createBtn(
-                btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                btnGroupPosY+this.btnMargin+this.btnSize/2,
-                [x,y],
-                0,
-                cell.filedSides[0] ? color:defaultColor
-            ));
-            gameBoard.add(this.createBtn(
-                btnGroupPosX+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-                btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                [x,y],
-                1,
-                cell.filedSides[1] ? color:defaultColor
-            ));
-            gameBoard.add(this.createBtn(
-                btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                btnGroupPosY+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-                [x,y],
-                2,
-                cell.filedSides[2] ? color:defaultColor
-            ));
-            // gameBoard.add(this.createBtn(
-            //     btnGroupPosX+this.btnMargin+this.btnSize/2,
-            //     btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-            //     [x,y],
-            //     3,
-            //     cell.filedSides[3] ? color:defaultColor
-            // ));
-        }
-        for(let y = 1; y<this.game.getBoardLength()-1; y++){
-            let x=this.game.getBoardWidth()-1;
-            let cell = this.game.cells[x][y];
-            let color = cell.owner<0?defaultColor:colors[cell.owner];
-            if(this.game.cells[x][y].owner>=0)
-                color = colors[this.game.cells[x][y].owner];
+	private animations: InterpolatedAnimation[] = [];
+	public addAnimation(animation: InterpolatedAnimation) {
+		this.animations.push(animation);
+	}
+	private animate() {
+		for (let i = 0; i < this.animations.length; i++) {
+			let animation: InterpolatedAnimation = this.animations[i]!;
+			animation.animate();
+			if (animation.finished) {
+				this.animations.splice(i, 1);
+			}
+		}
+	}
 
-            let btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
-            let btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
-            
-            gameBoard.add(this.createBtn(
-                btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                btnGroupPosY+this.btnMargin+this.btnSize/2,
-                [x,y],
-                0,
-                cell.filedSides[0] ? color:defaultColor
-            ));
-            // gameBoard.add(this.createBtn(
-            //     btnGroupPosX+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-            //     btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-            //     [x,y],
-            //     1,
-            //     cell.filedSides[1] ? color:defaultColor
-            // ));
-            gameBoard.add(this.createBtn(
-                btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                btnGroupPosY+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-                [x,y],
-                1,
-                cell.filedSides[1] ? color:defaultColor
-            ));
-            gameBoard.add(this.createBtn(
-                btnGroupPosX+this.btnMargin+this.btnSize/2,
-                btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-                [x,y],
-                2,
-                cell.filedSides[2] ? color:defaultColor
-            ));
-        }
-        //#region 0,0
-        let x=0;
-        let y=0;
-        let cell = this.game.cells[x][y];
-        let color = cell.owner<0?defaultColor:colors[cell.owner];
-        if(this.game.cells[x][y].owner>=0)
-            color = colors[this.game.cells[x][y].owner];
-        let btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
-        let btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
-        gameBoard.add(this.createBtn(
-            btnGroupPosX+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-            btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-            [x,y],
-            0,
-            cell.filedSides[0] ? color:defaultColor
-        ));
-        gameBoard.add(this.createBtn(
-            btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-            btnGroupPosY+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-            [x,y],
-            1,
-            cell.filedSides[1] ? color:defaultColor
-        ));
-        //#endregion
-        //#region 0,max
-        x=0;
-        y=this.game.getBoardLength()-1;
-        cell = this.game.cells[x][y];
-        color = cell.owner<0?defaultColor:colors[cell.owner];
-        if(this.game.cells[x][y].owner>=0)
-            color = colors[this.game.cells[x][y].owner];
-        btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
-        btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
-        gameBoard.add(this.createBtn(
-            btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-            btnGroupPosY+this.btnMargin+this.btnSize/2,
-            [x,y],
-            0,
-            cell.filedSides[0] ? color:defaultColor
-        ));
-        gameBoard.add(this.createBtn(
-            btnGroupPosX+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-            btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-            [x,y],
-            1,
-            cell.filedSides[1] ? color:defaultColor
-        ));
-        //#endregion
-        //#region max,0
-        x=this.game.getBoardWidth()-1;
-        y=0;
-        cell = this.game.cells[x][y];
-        color = cell.owner<0?defaultColor:colors[cell.owner];
-        if(this.game.cells[x][y].owner>=0)
-            color = colors[this.game.cells[x][y].owner];
-        btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
-        btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
-        gameBoard.add(this.createBtn(
-            btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-            btnGroupPosY+this.btnSize*2+this.btnMargin*3+this.btnSize/2,
-            [x,y],
-            0,
-            cell.filedSides[0] ? color:defaultColor
-        ));
-        gameBoard.add(this.createBtn(
-            btnGroupPosX+this.btnMargin+this.btnSize/2,
-            btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-            [x,y],
-            1,
-            cell.filedSides[1] ? color:defaultColor
-        ));
-        //#endregion
-        //#region max,max
-        x=this.game.getBoardWidth()-1;
-        y=this.game.getBoardLength()-1;
-        cell = this.game.cells[x][y];
-        color = cell.owner<0?defaultColor:colors[cell.owner];
-        if(this.game.cells[x][y].owner>=0)
-            color = colors[this.game.cells[x][y].owner];
-        btnGroupPosX = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*x;
-        btnGroupPosY = (this.btnSize*3+this.btnMargin*4+this.btnGroupMargin)*y;
-        gameBoard.add(this.createBtn(
-            btnGroupPosX+this.btnSize+this.btnMargin*2+this.btnSize/2,
-            btnGroupPosY+this.btnMargin+this.btnSize/2,
-            [x,y],
-            0,
-            cell.filedSides[0] ? color:defaultColor
-        ));
-        gameBoard.add(this.createBtn(
-            btnGroupPosX+this.btnMargin+this.btnSize/2,
-            btnGroupPosY+this.btnSize+this.btnMargin*2+this.btnSize/2,
-            [x,y],
-            1,
-            cell.filedSides[1] ? color:defaultColor
-        ));
-        //#endregion
-        console.log(this.game);
-        console.log(gameBoard);
-        return gameBoard;
-    }
-    createBtn(x:number, y:number, group: number[], side: number, color: number): Mesh{
-        let m = new Mesh(this.boxGeometry,new MeshToonMaterial( { color: color} ));
-                m.position.set(x,0,y);
-                m.scale.set(this.btnSize,this.btnSize,this.btnSize);
-                m.userData.tag="btn";
-                m.userData.group=group;
-                m.userData.side=side;
-        return m;
-    }
-
+	public updateFrame() {
+		this.animate();
+	}
 }

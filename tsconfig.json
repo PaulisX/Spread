@@ -18,10 +18,17 @@
 
     /* Linting */
     "strict": true,
+    // "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    // "noPropertyAccessFromIndexSignature": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "noImplicitThis": false
+    "noImplicitThis": false,
+
+    //extra
+    "baseUrl": "./",
+    "paths": {"@/*":["src/*"]}
   },
   "include": ["src"],
   //added
