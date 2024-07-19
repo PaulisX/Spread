@@ -1,20 +1,24 @@
 {
-  "name": "vite-project",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "devDependencies": {
-    "@types/three": "^0.163.0",
-    "typescript": "^5.2.2",
-    "vite": "^5.2.0"
-  },
-  "dependencies": {
-    "peerjs": "^1.5.2",
-    "three": "^0.163.0"
-  }
+	"name": "spread",
+  "description": "3D multiplayer game about taking over the world with colors",
+	"author": "PaulisX",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview"
+	},
+	"devDependencies": {
+		"@tsconfig/node22": "^22.0.0",
+		"@tsconfig/strictest": "^2.0.5",
+		"@types/three": "^0.163.0",
+		"typescript": "^5.5.3",
+		"vite": "^5.2.0"
+	},
+	"dependencies": {
+		"peerjs": "^1.5.2",
+		"three": "^0.163.0"
+	}
 }
