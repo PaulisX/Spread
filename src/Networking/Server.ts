@@ -12,7 +12,8 @@ export type Server = {
 	sendMessageAll(message: Message): void;
 	sendMessageAllExcept(message: Message, ...id: number[]): void;
 
-	getClient(id: number): ClientData | undefined;
+	getClientById(id: number): ClientData | undefined;
+	// getClientByConnectionId(id: number): ClientData | undefined;
 	getClients(): ClientData[];
 
 	destroy(): void;

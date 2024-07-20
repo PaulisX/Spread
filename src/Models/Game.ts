@@ -1,6 +1,6 @@
 export class GameBoard {
 	cells: Cell[][] = [];
-	updateQueue: number[][];
+	updateQueue: Cell[];
 	constructor() {
 		this.updateQueue = [];
 	}
@@ -53,74 +53,65 @@ export class GameBoard {
 	getBoardLength(): number {
 		return this.cells[0]!.length;
 	}
-	getExplosions(): number[][] {
-		return JSON.parse(JSON.stringify(this.updateQueue));
-	}
 	move(owner: number, x: number, y: number, side: number): boolean {
-		const cell = this.cells[x]![y];
-		if (cell!.owner != owner && cell!.owner != -1) {
+		const cell = this.cells[x]?.[y];
+		if (!cell) {
+			console.warn("Tried to perfrom move on illegal cell!");
+			return false;
+		}
+		if (cell.owner != owner && cell.owner != -1) {
 			console.log(cell, owner);
 			return false;
 		}
 
-		if (!this.cells[x]![y]!.color(side)) return false;
+		if (!cell.color(side)) return false;
 
-		this.cells[x]![y]!.owner = owner;
-		if (this.cells[x]![y]!.isFull()) {
-			console.log("reach max");
-			let el: number[] = [x, y];
-			this.updateQueue.push(el);
-			console.log("add to ex queue!", this.updateQueue);
-		}
+		cell.owner = owner;
+		if (cell.isFull()) this.updateQueue.push(cell);
 		return true;
 	}
 	update(): Cell[] {
-		let newQ: number[][] = [];
+		let newQ: Cell[] = [];
 		// let exploded:number[][] = [];
 
 		console.log(this.updateQueue);
 		let changes: Cell[] = [];
 		while (this.updateQueue.length > 0) {
-			let gr: number[] | undefined = this.updateQueue.shift();
-			if (!gr) {
-				console.error("error!");
-				return [];
-			}
-			let x = gr[0]!,
-				y = gr[1]!;
-			let cell = this.cells[x]![y]!;
+			let cell: Cell = this.updateQueue.shift()!;
+			let x = cell.x;
+			let y = cell.y;
 			changes.push(cell);
 			let owner = cell.owner;
 			if (cell.isFull()) {
-				this.cells[x]![y]!.clear();
+				cell.clear();
 
 				if (x + 1 < this.cells.length) {
 					let cell: Cell = this.cells[x + 1]![y]!;
 					changes.push(cell);
 					cell!.owner = owner;
 					cell!.color(3, false);
-					if (cell!.isFull()) newQ.push([x + 1, y]);
+					if (cell!.isFull()) newQ.push(cell);
 				}
 				if (x - 1 >= 0) {
 					let cell: Cell = this.cells[x - 1]![y]!;
 					changes.push(cell);
 					cell!.owner = owner;
 					cell!.color(1, false);
-					if (cell!.isFull()) newQ.push([x - 1, y]);
+					if (cell!.isFull()) newQ.push(cell);
 				}
 				if (y + 1 < this.cells.length) {
 					let cell: Cell = this.cells[x]![y + 1]!;
 					changes.push(cell);
 					cell!.owner = owner;
 					cell!.color(0, false);
-					if (cell!.isFull()) newQ.push([x, y + 1]);
+					if (cell!.isFull()) newQ.push(cell);
 				}
 				if (y - 1 >= 0) {
 					let cell: Cell = this.cells[x]![y - 1]!;
 					changes.push(cell);
 					cell!.owner = owner;
 					cell!.color(2, false);
-					if (cell!.isFull()) newQ.push([x, y - 1]);
+					if (cell!.isFull()) newQ.push(cell);
 				}
 			}
 		}
@@ -134,6 +125,16 @@ export class GameBoard {
 				if (predicate(cell)) cell.clear();
 			})
 		);
+	}
+	getScores(): Map<number, number> {
+		let score: Map<number, number> = new Map<number, number>();
+		this.cells.forEach((row) => {
+			row.forEach((cell) => {
+				if (cell.owner == -1) return;
+				score.set(cell.owner, (score.get(cell.owner) ?? 0) + 1);
+			});
+		});
+		return score;
 	}
 }
 export class Cell {

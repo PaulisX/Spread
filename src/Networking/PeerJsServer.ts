@@ -104,15 +104,13 @@ export class peerJsServer implements Server {
 
 	// getClient(id: number): ClientData|undefined;
 	// getClient(connectionId: string): ClientData|undefined;
-	getClient(id: number | string): PeerJsClientData | undefined {
-		if (typeof id == "number") {
-			return this.clients.get(id);
-		}
-		if (typeof id == "string") {
-			for (let element of this.clients) {
-				if (element[1].connectionId == id) {
-					return element[1];
-				}
+	getClientById(id: number): PeerJsClientData | undefined {
+		return this.clients.get(id);
+	}
+	getClientByConnectionId(id: string): PeerJsClientData | undefined {
+		for (let element of this.clients.values()) {
+			if (element[1].connectionId == id) {
+				return element[1];
 			}
 		}
 		return undefined;

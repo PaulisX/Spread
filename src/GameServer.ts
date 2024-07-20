@@ -1,10 +1,10 @@
-import { ClientMessageTypes, ServerMessageTypes } from "./MessageTypes";
-import { GameBoard } from "./Models/Game";
-import { ClientData } from "./Networking/Models/ClientData";
-import { Message } from "./Networking/Models/Message";
-import { peerJsServer } from "./Networking/PeerJsServer";
-import { Server } from "./Networking/Server";
-import { TypedEventEmitter } from "./Utils/TypedEventEmitter";
+import { ClientMessageTypes, ServerMessageTypes } from "./MessageTypes.js";
+import { GameBoard } from "./Models/Game.js";
+import { ClientData } from "./Networking/Models/ClientData.js";
+import { Message } from "./Networking/Models/Message.js";
+import { peerJsServer } from "./Networking/PeerJsServer.js";
+import { Server } from "./Networking/Server.js";
+import { TypedEventEmitter } from "./Utils/TypedEventEmitter.js";
 import EventEmitter from "eventemitter3";
 
 export class GameServer {
@@ -39,7 +39,7 @@ export class GameServer {
 		this.server.events.on("error", (err: Error) => {
 			this.errored = true;
 		});
-		this.server.events.on("onDisconnected", (client) => {
+		this.server.events.on("onDisconnected", (client: ClientData) => {
 			console.log(`Player ${client.id}, ${client.username} left.`);
 			let index = this.turnOrder.findIndex((v) => v.id == client.id);
 			this.turnOrder.splice(index, 1);
@@ -58,7 +58,7 @@ export class GameServer {
 		this.server.events.on("onMessage", (msg: Message, client: ClientData) => {
 			this.handleServerMessage(msg, client);
 		});
-		this.server.events.on("onConnected", (client) => {
+		this.server.events.on("onConnected", (client: ClientData) => {
 			console.log("Client connected ", client.username);
 			this.turnOrder.push(client);
 			this.server!.sendMessageAllExcept(

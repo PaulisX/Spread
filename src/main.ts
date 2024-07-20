@@ -1,22 +1,25 @@
 import "./DevConsole.ts";
-import { DevConsole } from "./DevConsole.ts";
-import { GameServer } from "./GameServer";
-import { GameUI } from "./GameUI.ts";
-import { GameWorld } from "./GameWorld.ts";
-import { ClientMessageTypes, ServerMessageTypes } from "./MessageTypes.ts";
-import { GameBoard } from "./Models/Game";
-import { Client } from "./Networking/Client.ts";
-import { ClientData } from "./Networking/Models/ClientData.ts";
-import { Message } from "./Networking/Models/Message";
-import { peerJsClient } from "./Networking/PeerJsClient.ts";
+import { DevConsole } from "./DevConsole.js";
+import { GameServer } from "./GameServer.js";
+import { GameUI } from "./GameUI.js";
+import { GameWorld } from "./GameWorld.js";
+import { ClientMessageTypes, ServerMessageTypes } from "./MessageTypes.js";
+import { GameBoard } from "./Models/Game.js";
+import { GameSettings } from "./Models/GameSettings.js";
+import { PerformedTurn } from "./Models/PerformedTurn.js";
+import { Client } from "./Networking/Client.js";
+import { ClientData } from "./Networking/Models/ClientData.js";
+import { Message } from "./Networking/Models/Message.js";
+import { peerJsClient } from "./Networking/PeerJsClient.js";
 import "./Utils/Object3DExtensions.ts";
 
 let gameServer: GameServer | null;
 let client: Client;
 let game: GameBoard | null;
 
-let members: ClientData[] = [];
-let currentTurn: number = 0;
+let turnCount: number = 0;
+let turnOrder: number[];
+let members: Map<number, ClientData> = new Map<number, ClientData>();
 
 let gameWorld = new GameWorld();
 let boardModification: Promise<any>;
@@ -72,7 +75,7 @@ async function Host(username: string) {
 	});
 	// Set start game btn
 	gameUi.events.on("startGame", () => {
-		if (members.length < 2) {
+		if (members.entries.length < 2) {
 			console.warn("Cannot start server with less than 2 players!");
 			return;
 		}
@@ -85,25 +88,6 @@ async function Host(username: string) {
 
 	gameUi.showLobby(gameServer.getId(), true);
 }
-function getAlivePlayerCount() {
-	let scores = getScores();
-	let count = 0;
-	scores.forEach((val) => {
-		if (val > 0) count++;
-	});
-	return count;
-}
-function getScores(): Map<number, number> {
-	let score: Map<number, number> = new Map<number, number>();
-	members.forEach((v) => score.set(v.id, 0));
-	game!.cells.forEach((row) => {
-		row.forEach((cell) => {
-			if (cell.owner == -1) return;
-			score.set(cell.owner, score.get(cell.owner)! + 1);
-		});
-	});
-	return score;
-}
 async function handleClientMessage(msg: Message) {
 	switch (msg.type) {
 		case ServerMessageTypes.LobbyMemberList:
@@ -113,14 +97,14 @@ async function handleClientMessage(msg: Message) {
 			break;
 		case ServerMessageTypes.PlayerJoinedLobby:
 			let newClient: ClientData = JSON.parse(msg.content);
-			members.push(newClient);
+			members.set(newClient.id, newClient);
 			gameUi.setLobbyMemembers(members);
 			break;
 		case ServerMessageTypes.PlayerLeftLobby:
 			let leftClient: ClientData = JSON.parse(msg.content);
 			console.log(`Player ${leftClient.id}, ${leftClient.username} left.`);
 			await boardModification;
-			members = members.filter((v) => v.id != leftClient.id);
+			members.delete(leftClient.id);
 			console.log(members);
 			gameUi.setLobbyMemembers(members);
 			gameUi.setGameMemberList(members);
@@ -128,29 +112,24 @@ async function handleClientMessage(msg: Message) {
 			gameWorld.createGameboard(game!, GameUI.colors);
 			break;
 		case ServerMessageTypes.StartGame:
-			let m = JSON.parse(msg.content);
-			let boardSize: number = m.size;
-			let nextTurn: number = m.nextTurn;
+			let m: GameSettings = JSON.parse(msg.content);
+			let boardSize: number = m.boardSize;
+			turnOrder = m.turnOrder;
+			turnCount = 0;
 			startGame();
-			currentTurn = nextTurn;
 			break;
 		case ServerMessageTypes.HoverBtn:
 			//TODO: Handle hover
 			break;
 		case ServerMessageTypes.PerformTurn: {
-			let m = JSON.parse(msg.content);
-			let move: number[] = m.move;
-			let gameOver: boolean = m.gameEnd;
-			let serverScore: Map<number, number> = m.score;
-			let nextTurn: number = m.nextTurn;
-			console.log(currentTurn, move[3], nextTurn);
-			if (move.length != 4) {
-				console.error("");
-				return;
-			}
+			let pt: PerformedTurn = JSON.parse(msg.content);
+			let gameOver: boolean = pt.resultScores.entries.length == 1;
 
-			console.log("client handle turn", move[0], move[1]);
-			if (!game?.move(move[3]!, move[0]!, move[1]!, move[2]!)) {
+			//TODO: change to assert
+			if (pt.playerId != turnOrder[turnCount % turnOrder.length])
+				throw new Error("Not equals");
+
+			if (!game?.move(pt.playerId, pt.cellX, pt.cellY, pt.side)) {
 				//TODO: Handle Failed turn
 				alert("Failed to performed remote turn!" + msg);
 				console.error("Failed to performed remote turn!", msg);
@@ -158,15 +137,15 @@ async function handleClientMessage(msg: Message) {
 			}
 
 			gameWorld.colorCell(
-				move[0]!,
-				move[1]!,
-				move[2]!,
-				GameUI.colors[move[3]!]!
+				pt.cellX,
+				pt.cellY,
+				pt.side,
+				GameUI.colors[pt.playerId]!
 			);
-			let score: Map<number, number>;
+			let score: Map<number, number> = game.getScores();
 			let explosionCount = 0;
 			boardModification = new Promise<void>(async (resolve, reject) => {
-				while (game!.updateQueue.length > 0 && getAlivePlayerCount()) {
+				while (game!.updateQueue.length > 0 && score.entries.length > 1) {
 					let updateQueue: number[][] = Object.assign(
 						[],
 						game!.updateQueue
@@ -174,45 +153,26 @@ async function handleClientMessage(msg: Message) {
 					let changes = game!.update();
 					gameUi.setExplosionCounter(
 						++explosionCount,
-						GameUI.colors[move[3]!]
+						GameUI.colors[pt.playerId]
 					);
 					await gameWorld.explodeCells(
 						updateQueue,
 						changes,
-						GameUI.colors[move[3]!]
+						GameUI.colors[pt.playerId] ?? 0x000
 					);
-					console.log("exploded!!!");
-					if (getAlivePlayerCount() <= 1) break;
+					score = game!.getScores();
 				}
 				if (explosionCount > 0)
-					gameUi.setExplosionCounter(0, GameUI.colors[move[3]!]);
-				if (gameOver) {
-					score = getScores();
-					for (let k of score.keys()) {
-						if (score.get(k)! > 0) {
-							let winner = members.find((v) => {
-								if (v.id == k) return v;
-							});
-							if (!winner)
-								throw new Error(`Failed to find winner! id: ${k}`);
-							gameOverF(winner);
-							break;
-						}
-					}
+					gameUi.setExplosionCounter(0, GameUI.colors[pt.playerId]);
+
+				if (score.entries.length == 1) {
+					score.keys().next().value!;
+					gameOverF(members.get(score.keys().next().value)!);
 				}
-				currentTurn = nextTurn;
+				turnCount++;
 				resolve();
 			});
 			await boardModification;
-
-			//                                                      HIGHLIGHTS  currnet player
-			// document
-			// 	.getElementById(`g-pid-${currentTurn}`)
-			// 	?.classList.remove("current-turn");
-			// document
-			// 	.getElementById(`g-pid-${nextTurn}`)
-			// 	?.classList.add("current-turn");
-
 			break;
 		}
 		default:

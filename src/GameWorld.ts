@@ -1,12 +1,10 @@
 import * as THREE from "three";
 import { Mesh, Object3D, MeshToonMaterial, BufferGeometry } from "three";
 import { OrbitControls } from "three/addons";
-import { InterpolatedAnimation } from "./InterpolatedAnimation";
-import { Cell, GameBoard } from "./Models/Game";
-import { color, func } from "three/examples/jsm/nodes/Nodes.js";
+import { InterpolatedAnimation } from "./InterpolatedAnimation.js";
+import { Cell, GameBoard } from "./Models/Game.js";
 import EventEmitter from "eventemitter3";
-import { GameUI } from "./GameUI";
-import { delay } from "./Utils/Delay";
+import { delay } from "@/Utils/Delay.js";
 
 export class GameWorld {
 	private renderer = new THREE.WebGLRenderer();
@@ -79,10 +77,10 @@ export class GameWorld {
 		this.raycaster.setFromCamera(mousePosition, this.camera);
 		var intersects = this.raycaster.intersectObject(this.scene, true);
 
-		if (intersects.length == 0) {
+		if (intersects.length <= 0) {
 			return;
 		}
-		let foundObj: Object3D = intersects[0].object;
+		let foundObj: Object3D = intersects[0]!.object;
 		//TODO: Reimplement hover logic
 	}
 	onMouseClick(event: MouseEvent) {
@@ -98,26 +96,26 @@ export class GameWorld {
 		if (intersects.length == 0) {
 			return;
 		}
-		let foundObj: Object3D = intersects[0].object;
+		let foundObj: Object3D = intersects[0]!.object;
 		if (!foundObj.userData["tag"] || foundObj.userData["tag"] != "btn") {
 			return;
 		}
 		this.events.emit("clickBtn", [
-			foundObj.userData.group[0],
-			foundObj.userData.group[1],
-			foundObj.userData.side,
+			foundObj.userData["group"][0],
+			foundObj.userData["group"][1],
+			foundObj.userData["side"],
 		]);
 	}
 	colorCell(x: number, y: number, side: number, color: number) {
 		console.log(x, y, side, color);
-		let m = this.gameBoardBtns[x][y][side]!.material as MeshToonMaterial;
+		let m = this.gameBoardBtns[x]![y]![side]!.material as MeshToonMaterial;
 		m.color.setHex(color);
 	}
-	async explodeCells(cells: number[][], changes: Cell[], color: number) {
+	async explodeCells(cells: Cell[], changes: Cell[], color: number) {
 		let pColor = color;
 		cells.forEach((cell) => {
 			for (let i = 0; i < 4; i++) {
-				let fromBtn = this.gameBoardBtns[cell[0]][cell[1]][i];
+				let fromBtn = this.gameBoardBtns[cell[0]!]![cell[1]!]![i];
 				if (fromBtn == undefined) continue;
 
 				(fromBtn.material as MeshToonMaterial).color.setHex(0xeaf7ff);
@@ -133,14 +131,12 @@ export class GameWorld {
 					sharedProperties.push(m);
 					this.scene.add(m);
 				};
-				let toCellCoord: number[] = cell.slice();
-				if (i == 0) toCellCoord[1] -= 1;
-				else if (i == 1) toCellCoord[0] += 1;
-				else if (i == 2) toCellCoord[1] += 1;
-				else if (i == 3) toCellCoord[0] -= 1;
+				if (i == 0) cell.y -= 1;
+				else if (i == 1) cell.x += 1;
+				else if (i == 2) cell.y += 1;
+				else if (i == 3) cell.x -= 1;
 
-				let toBtn =
-					this.gameBoardBtns[toCellCoord[0]][toCellCoord[1]][(i + 2) % 4];
+				let toBtn = this.gameBoardBtns[cell.x][cell.y][(i + 2) % 4];
 
 				let onFinish = (sharedProperties: any[]) => {
 					this.scene.remove(sharedProperties[0]);
@@ -150,9 +146,12 @@ export class GameWorld {
 				let to: number[] = [toBtn!.position.x, 1, toBtn!.position.z];
 				let evaluate = (t: number, sharedProperties: any[]) => {
 					sharedProperties[0].position.set(
-						from[0] + (to[0] - from[0]) * t,
-						from[1] + (to[1] - from[1]) * t + -Math.pow(t * 2 - 1, 2) + 1,
-						from[2] + (to[2] - from[2]) * t
+						from[0]! + (to[0]! - from[0]!) * t,
+						from[1]! +
+							(to[1]! - from[1]!) * t +
+							-Math.pow(t * 2 - 1, 2) +
+							1,
+						from[2]! + (to[2]! - from[2]!) * t
 					);
 				};
 				this.addAnimation(

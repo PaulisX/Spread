@@ -1,18 +1,6 @@
-import {
-	BoxGeometry,
-	Material,
-	Mesh,
-	MeshToonMaterial,
-	Object3D,
-	Scene,
-} from "three";
-import { GameBoard } from "@/Models/Game";
-import { int } from "three/examples/jsm/nodes/Nodes.js";
-import { Geometry } from "three/examples/jsm/deprecated/Geometry.js";
 import EventEmitter from "eventemitter3";
-import { ClientData } from "@/Networking/Models/ClientData";
-import { Client } from "./Networking/Client";
-import { InterpolatedAnimation } from "./InterpolatedAnimation";
+import { ClientData } from "@/Networking/Models/ClientData.js";
+import { InterpolatedAnimation } from "./InterpolatedAnimation.js";
 
 export class GameUI {
 	static colors = [
@@ -100,7 +88,7 @@ export class GameUI {
 			});
 		}
 	}
-	setLobbyMemembers(clients: ClientData[]) {
+	setLobbyMemembers(clients: Map<number, ClientData>) {
 		let memberListStr = "";
 		clients.forEach((client) => {
 			memberListStr += `<li style="display: flex;  flex-direction: row;align-content: flex-end;" id="l-pid-${client.id}"><img src="./vite.svg" style="padding-right:10px;"><h3>${client.username}</h3></li>`;
@@ -113,7 +101,7 @@ export class GameUI {
 		this.lobbyUi.style.display = "none";
 		this.gameUi.style.display = "block";
 	}
-	setGameMemberList(clients: ClientData[]) {
+	setGameMemberList(clients: Map<number, ClientData>) {
 		let memberListStr = "";
 		clients.forEach((client) => {
 			memberListStr += `<li style="display: flex;  flex-direction: row;align-content: flex-end;" id="l-pid-${client.id}"><img src="./vite.svg" style="padding-right:10px;"><h3>${client.username}</h3></li>`;
