@@ -1,6 +1,6 @@
-import { Client, ClientEvents } from "./Client";
-import { TypedEventEmitter } from "../Utils/TypedEventEmitter";
-import Peer from "peerjs";
+import { Client, ClientEvents } from "./Client.js";
+import { TypedEventEmitter } from "../Utils/TypedEventEmitter.js";
+import { Peer } from "peerjs";
 import type {
 	BaseConnectionErrorType,
 	DataConnection,
@@ -8,7 +8,7 @@ import type {
 	PeerError,
 	PeerErrorType,
 } from "peerjs";
-import { Message } from "./Models/Message";
+import { Message } from "./Models/Message.js";
 import { func } from "three/examples/jsm/nodes/Nodes.js";
 
 export class peerJsClient implements Client {

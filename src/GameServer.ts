@@ -1,5 +1,7 @@
 import { ClientMessageTypes, ServerMessageTypes } from "./MessageTypes.js";
 import { GameBoard } from "./Models/Game.js";
+import { GameSettings } from "./Models/GameSettings.js";
+import { PerformedTurn } from "./Models/PerformedTurn.js";
 import { ClientData } from "./Networking/Models/ClientData.js";
 import { Message } from "./Networking/Models/Message.js";
 import { peerJsServer } from "./Networking/PeerJsServer.js";
@@ -59,7 +61,7 @@ export class GameServer {
 			this.handleServerMessage(msg, client);
 		});
 		this.server.events.on("onConnected", (client: ClientData) => {
-			console.log("Client connected ", client.username);
+			console.log(`Client connected ${client.id}, ${client.username}`);
 			this.turnOrder.push(client);
 			this.server!.sendMessageAllExcept(
 				{
@@ -101,13 +103,14 @@ export class GameServer {
 				this.gameBoard.initGame(5);
 				this.server!.sendMessageAll({
 					type: ServerMessageTypes.StartGame,
-					content: JSON.stringify({
-						size: 5,
-						nextTurn: this.turnOrder[this.currentTurn]!.id,
-					}),
+					content: JSON.stringify(
+						new GameSettings(
+							5,
+							this.turnOrder.map((v) => v.id)
+						)
+					),
 				});
 				this.turnOrder = this.server!.getClients();
-				console.log("Turn order: ", this.turnOrder);
 				break;
 			}
 			case ClientMessageTypes.HoverBtn: {
@@ -176,17 +179,18 @@ export class GameServer {
 						}
 					}
 				}
-				this.currentTurn = (this.currentTurn + 1) % this.turnOrder.length;
 				this.turnCount++;
+				let performedTurn: PerformedTurn = {
+					playerId: this.currentTurn,
+					cellX: el[0]!,
+					cellY: el[1]!,
+					side: el[2]!,
+				};
 				this.server!.sendMessageAll({
 					type: ServerMessageTypes.PerformTurn,
-					content: JSON.stringify({
-						move: el,
-						score: scores,
-						gameEnd: gameEnd,
-						nextTurn: this.currentTurn,
-					}),
+					content: JSON.stringify(performedTurn),
 				});
+				this.currentTurn = (this.currentTurn + 1) % this.turnOrder.length;
 
 				if (gameEnd) {
 					this.events.emit("gameOver");

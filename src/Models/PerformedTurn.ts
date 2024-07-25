@@ -1,7 +1,7 @@
-export class PerformedTurn {
-	public playerId: number;
-	public cellX: number;
-	public cellY: number;
-	public side: number;
-	public resultScores: Map<number, number>;
+export interface PerformedTurn {
+	playerId: number;
+	cellX: number;
+	cellY: number;
+	side: number;
+	// public resultScores: Map<number, number>;
 }

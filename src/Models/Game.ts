@@ -1,3 +1,5 @@
+import { Cell } from "./Cell.js";
+
 export class GameBoard {
 	cells: Cell[][] = [];
 	updateQueue: Cell[];
@@ -60,7 +62,6 @@ export class GameBoard {
 			return false;
 		}
 		if (cell.owner != owner && cell.owner != -1) {
-			console.log(cell, owner);
 			return false;
 		}
 
@@ -68,6 +69,8 @@ export class GameBoard {
 
 		cell.owner = owner;
 		if (cell.isFull()) this.updateQueue.push(cell);
+		console.log(cell.isFull());
+		console.log(this.updateQueue);
 		return true;
 	}
 	update(): Cell[] {
@@ -135,70 +138,5 @@ export class GameBoard {
 			});
 		});
 		return score;
-	}
-}
-export class Cell {
-	owner: number = -1;
-	filedSides: number[];
-	x: number;
-	y: number;
-	constructor(size: number, x: number, y: number) {
-		this.filedSides = new Array(size).fill(false, 0, size);
-		this.x = x;
-		this.y = y;
-	}
-	disableSide(side: number) {
-		this.filedSides[side] = -1;
-	}
-
-	enableSide(side: number) {
-		this.filedSides[side] = 0;
-	}
-	value(): number {
-		let c = 0;
-		this.filedSides.forEach((e: number) => {
-			if (e == 1) c++;
-		});
-		return c;
-	}
-	maxValue(): number {
-		return this.filedSides.length;
-	}
-	color(side: number, strict: boolean = true): boolean {
-		// Disabled
-		if (this.filedSides[side]! < 0) return false;
-
-		// Avaliable
-		if (this.filedSides[side] == 0) {
-			this.filedSides[side] = 1;
-			return true;
-		}
-
-		// Dont color another side if strict
-		if (strict) return false;
-
-		// Button already colored. color different side.
-		for (let i = 0; i < this.filedSides.length; i++) {
-			if (this.filedSides[i] == 1 || this.filedSides[i] == -1) continue;
-			this.filedSides[i] = 1;
-			break;
-		}
-		return true;
-	}
-	clear() {
-		this.owner = -1;
-		for (let i = 0; i < this.filedSides.length; i++) {
-			if (this.filedSides[i] != 1) continue;
-			this.filedSides[i] = 0;
-		}
-	}
-	isFull(): boolean {
-		for (let i = 0; i < this.filedSides.length; i++) {
-			if (this.filedSides[i] == 1 || this.filedSides[i] == -1) {
-				continue;
-			}
-			return false;
-		}
-		return true;
 	}
 }

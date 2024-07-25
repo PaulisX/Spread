@@ -32,14 +32,11 @@ gameUi.events.on("join", (joinCode: string, username: string) =>
 );
 
 function Join(hostId: string, username: string) {
-	console.log(`join code: ${hostId}, username: ${username}`);
 	console.log("Joining ...");
 	if (client == null) {
-		console.log("create client!");
 		client = new peerJsClient();
 	}
 	client.events.on("started", (id: string) => {
-		console.log("started, Connecting ...", id);
 		client.connect(hostId, username);
 	});
 	client.events.on("onMessage", (msg: Message) => {
@@ -67,15 +64,16 @@ async function Host(username: string) {
 	//     return;
 	// }
 
-	console.log("Joining game ...");
+	console.log("Connecting to own server ...");
 	Join(gameServer.getId(), username);
 	gameServer.events.on("gameOver", () => {
+		//TODO: Handle game over
 		console.log("Server destroyed!");
 		gameServer!.destroy();
 	});
 	// Set start game btn
 	gameUi.events.on("startGame", () => {
-		if (members.entries.length < 2) {
+		if (members.size < 2) {
 			console.warn("Cannot start server with less than 2 players!");
 			return;
 		}
@@ -91,8 +89,13 @@ async function Host(username: string) {
 async function handleClientMessage(msg: Message) {
 	switch (msg.type) {
 		case ServerMessageTypes.LobbyMemberList:
-			members = JSON.parse(msg.content);
-			console.log("Members list: ", members);
+			members = new Map(
+				Array.from(JSON.parse(msg.content)).map<[number, ClientData]>(
+					(v: any) => {
+						return [v.id, new ClientData(v.id, v.username)];
+					}
+				)
+			);
 			gameUi.setLobbyMemembers(members);
 			break;
 		case ServerMessageTypes.PlayerJoinedLobby:
@@ -105,7 +108,6 @@ async function handleClientMessage(msg: Message) {
 			console.log(`Player ${leftClient.id}, ${leftClient.username} left.`);
 			await boardModification;
 			members.delete(leftClient.id);
-			console.log(members);
 			gameUi.setLobbyMemembers(members);
 			gameUi.setGameMemberList(members);
 			game?.clearCells((cell) => cell.owner == leftClient.id);
@@ -123,11 +125,15 @@ async function handleClientMessage(msg: Message) {
 			break;
 		case ServerMessageTypes.PerformTurn: {
 			let pt: PerformedTurn = JSON.parse(msg.content);
-			let gameOver: boolean = pt.resultScores.entries.length == 1;
+			// let gameOver: boolean = pt.resultScores.entries.length == 1;
 
 			//TODO: change to assert
 			if (pt.playerId != turnOrder[turnCount % turnOrder.length])
-				throw new Error("Not equals");
+				throw new Error(
+					`Not equals: ${pt.playerId}, ${
+						turnOrder[turnCount % turnOrder.length]
+					}`
+				);
 
 			if (!game?.move(pt.playerId, pt.cellX, pt.cellY, pt.side)) {
 				//TODO: Handle Failed turn
@@ -135,7 +141,13 @@ async function handleClientMessage(msg: Message) {
 				console.error("Failed to performed remote turn!", msg);
 				break;
 			}
-
+			console.log(
+				"update queue not promise",
+				JSON.stringify(game!.updateQueue)
+			);
+			game!.updateQueue.forEach((c) => {
+				console.log("Test", c);
+			});
 			gameWorld.colorCell(
 				pt.cellX,
 				pt.cellY,
@@ -145,20 +157,17 @@ async function handleClientMessage(msg: Message) {
 			let score: Map<number, number> = game.getScores();
 			let explosionCount = 0;
 			boardModification = new Promise<void>(async (resolve, reject) => {
-				while (game!.updateQueue.length > 0 && score.entries.length > 1) {
-					let updateQueue: number[][] = Object.assign(
-						[],
-						game!.updateQueue
-					);
-					let changes = game!.update();
+				while (game!.updateQueue.length > 0 && score.size > 1) {
 					gameUi.setExplosionCounter(
 						++explosionCount,
 						GameUI.colors[pt.playerId]
 					);
+					let updateQueue = [...game!.updateQueue];
+					let changes = game!.update();
 					await gameWorld.explodeCells(
 						updateQueue,
-						changes,
-						GameUI.colors[pt.playerId] ?? 0x000
+						GameUI.colors[pt.playerId] ?? 0x000,
+						changes
 					);
 					score = game!.getScores();
 				}
@@ -166,8 +175,11 @@ async function handleClientMessage(msg: Message) {
 					gameUi.setExplosionCounter(0, GameUI.colors[pt.playerId]);
 
 				if (score.entries.length == 1) {
-					score.keys().next().value!;
-					gameOverF(members.get(score.keys().next().value)!);
+					let id: number = score.keys().next().value!;
+					let winner = members.get(score.keys().next().value!);
+					if (winner == undefined)
+						throw TypeError(`ClientData is undefined. ClientId: ${id}`);
+					gameOverF(winner);
 				}
 				turnCount++;
 				resolve();
@@ -182,6 +194,7 @@ async function handleClientMessage(msg: Message) {
 }
 
 function gameOverF(winner: ClientData): void {
+	//TODO: Handle game over client side
 	console.log("Game over!");
 	gameServer = null;
 	gameUi.gameOver(winner);
@@ -207,7 +220,7 @@ function startGame(): void {
 
 updateFrame();
 function updateFrame() {
-	requestAnimationFrame(updateFrame.bind(this));
+	requestAnimationFrame(updateFrame);
 	gameWorld.updateFrame();
 	gameUi.updateFrame();
 }
@@ -226,5 +239,21 @@ function initDevFunctions() {
 			gameWorld.createGameboard(game!, GameUI.colors);
 		},
 		"Regenerates the game board"
+	);
+	DevConsole.addFunction(
+		"PrintGame",
+		() => {
+			console.log(game);
+			// gameWorld.createGameboard(game!, GameUI.colors);
+		},
+		"Returns the game"
+	);
+	DevConsole.addFunction(
+		"PrintWorld",
+		() => {
+			console.log(gameWorld);
+			// gameWorld.createGameboard(game!, GameUI.colors);
+		},
+		"Returns the game"
 	);
 }
